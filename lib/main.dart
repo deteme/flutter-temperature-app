@@ -38,8 +38,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
 
-    // Démarrer la transmission des données dès l'initialisation, mais en mode veille
-    sensor.toggleMode(); // Passe d'abord en mode veille
+    // Démarrer la transmission des données dès l'initialisation, avec le mode par défaut (actif ou veille)
+    sensor.toggleMode(); // Passer au mode actif ou veille, selon l'état initial du capteur
 
     sensor.startTemperatureTransmission((temp) {
       setState(() {}); // Met à jour l'UI pour la température
@@ -50,8 +50,25 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  /// Met à jour la température avec une nouvelle valeur saisie par l'utilisateur
+  void updateTemperature(double value) {
+    setState(() {
+      sensor.setTemperature(value);
+    });
+  }
+
+  /// Met à jour l'humidité avec une nouvelle valeur saisie par l'utilisateur
+  void updateHumidity(double value) {
+    setState(() {
+      sensor.setHumidity(value);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    TextEditingController tempController = TextEditingController();
+    TextEditingController humidityController = TextEditingController();
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -69,6 +86,40 @@ class _MyHomePageState extends State<MyHomePage> {
               'Humidité: ${sensor.humidity}%',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            const SizedBox(height: 20),
+
+            // Champ pour entrer une nouvelle température
+            TextField(
+              controller: tempController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: "Nouvelle température (°C)"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                double? newTemp = double.tryParse(tempController.text);
+                if (newTemp != null) {
+                  updateTemperature(newTemp);
+                }
+              },
+              child: const Text("Modifier Température"),
+            ),
+
+            // Champ pour entrer une nouvelle humidité
+            TextField(
+              controller: humidityController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: "Nouvelle humidité (%)"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                double? newHumidity = double.tryParse(humidityController.text);
+                if (newHumidity != null) {
+                  updateHumidity(newHumidity);
+                }
+              },
+              child: const Text("Modifier Humidité"),
+            ),
+
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
