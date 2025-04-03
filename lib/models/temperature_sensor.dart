@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:temperature/services/server_communication.dart'; 
 
 /// Classe représentant un capteur de température et d'humidité
 class TemperatureSensor {
@@ -37,7 +38,10 @@ class TemperatureSensor {
     // Envoi toutes les 10s en mode actif, 20s en mode veille
     _temperatureTimer = Timer.periodic(
       Duration(seconds: isActive ? 10 : 20),
-      (Timer timer) => sendData(_temperature), // Envoie la température à chaque intervalle
+      (Timer timer) {
+        sendData(_temperature); // Envoie la température à chaque intervalle
+        ServerCommunication.sendDataToServer(_temperature, _humidity); // Envoie aussi au serveur
+      },
     );
   }
 
@@ -49,7 +53,10 @@ class TemperatureSensor {
     // Envoi toutes les 20s en mode actif, 50s en mode veille
     _humidityTimer = Timer.periodic(
       Duration(seconds: isActive ? 20 : 50),
-      (Timer timer) => sendData(_humidity), // Envoie l'humidité à chaque intervalle
+      (Timer timer) {
+        sendData(_humidity); // Envoie l'humidité à chaque intervalle
+        ServerCommunication.sendDataToServer(_temperature, _humidity); // Envoie aussi au serveur
+      },
     );
   }
 
