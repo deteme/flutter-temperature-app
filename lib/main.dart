@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:temperature/managers/sensor_manager.dart';
-import 'package:temperature/models/temperature_sensor.dart';
+//import 'package:temperature/models/temperature_sensor.dart';
 import 'package:temperature/utils/constants.dart';
 
 void main() {
@@ -115,7 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(height: 20),
 
-            // Champ pour entrer une nouvelle température
+            /*// Champ pour entrer une nouvelle température
             TextField(
               controller: tempController,
               keyboardType: TextInputType.number,
@@ -131,10 +131,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
               },
               child: const Text("Modifier Température"),
-            ),
+            ),*/
 
             // Champ pour entrer une nouvelle humidité
-            TextField(
+            /*TextField(
               controller: humidityController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
@@ -150,6 +150,7 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               child: const Text("Modifier Humidité"),
             ),
+            */
 
             const SizedBox(height: 20),
             ElevatedButton(

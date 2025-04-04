@@ -15,7 +15,7 @@ class SensorManager {
   );
   double _temperature = 00.0; // Température initiale en °C
   double _humidity = 00.0; // Humidité initiale en %
-  bool isActive = true; // Mode actif ou veille
+  bool isActive = false; // Mode actif ou veille
   Timer? timer;
   Timer? _temperatureTimer; // Timer pour l'envoi des données de température
   Timer? _humidityTimer; // Timer pour l'envoi des données d'humidité
@@ -35,8 +35,8 @@ class SensorManager {
   void launch(Function refresh) async {
     timer = Timer.periodic(Duration(seconds: _interval), (timer) async {
       double temp = generateTemperature(tempPrecision);
-      _temperature = temp;
-      _humidity = temp;
+      _temperature = generateTemperature(tempPrecision);
+      _humidity = generateTemperature(humidityPrecision);;
       print("Generated Temperature: $temperature°C");
       await sendDataToServer();
       //   await ServerCommunication.sendDataToServer(
