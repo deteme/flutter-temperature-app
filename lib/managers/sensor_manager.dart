@@ -3,92 +3,128 @@ import 'package:temperature/models/sensor.dart';
 import 'package:temperature/services/server_communication.dart';
 import 'package:temperature/utils/functions.dart';
 
-/// Classe représentant un capteur de température et d'humidité
+/// Manages sensor data, modes, and server communication
 class SensorManager {
-  Sensor sensor = Sensor(
-    "1",
-    "Temperature Sensor From Server",
-    "temperature_sensor",
-    clientAttributes: {'Serial Number': 'TS-001'},
-    serverAttributes: {'Location': 'Living Room'},
-    telemetryData: {'temperature': '22.5 °C'},
+  // Sensor data variables
+  double _temperature = 0.0; // Current temperature value
+  double _humidity = 0.0;    // Current humidity value
+  bool isActive = true;      // Active/Sleep mode flag
+  bool isAutoMode = true;    // Auto/Manual mode flag
+  bool _isManualDataPending = false; // Tracks if manual update is waiting
+
+  // Timers for periodic updates
+  Timer? _tempTimer;       // Timer for temperature updates
+  Timer? _humidityTimer;   // Timer for humidity updates
+  
+  // Sensor configuration
+  final Sensor sensor = Sensor(
+    "1", // Device ID
+    "Temperature Sensor", // Device name
+    "temperature_sensor", // Device type
+    clientAttributes: {'Serial Number': 'TS-001'}, // Client metadata
+    serverAttributes: {'Location': 'Living Room'}, // Server metadata
+    telemetryData: { // Initial telemetry values
+      'temperature': '0.0', 
+      'humidity': '0.0',
+      'status': 'active'
+    },
   );
-  double _temperature = 00.0; // Température initiale en °C
-  double _humidity = 00.0; // Humidité initiale en %
-  bool isActive = false; // Mode actif ou veille
-  Timer? timer;
-  Timer? _temperatureTimer; // Timer pour l'envoi des données de température
-  Timer? _humidityTimer; // Timer pour l'envoi des données d'humidité
 
-  /// Précision demandée pour la température (0.1°C)
-  static const int tempPrecision = 2;
+  // Getters for current values
+  double get temperature => _temperature; // Returns current temperature
+  double get humidity => _humidity;      // Returns current humidity
 
-  /// Précision demandée pour l'humidité (1%)
-  static const int humidityPrecision = 3;
-
-  int _interval = 5;
-
-  /// Accesseurs pour récupérer la température et l'humidité
-  double get temperature => _temperature;
-  double get humidity => _humidity;
-
-  void launch(Function refresh) async {
-    timer = Timer.periodic(Duration(seconds: _interval), (timer) async {
-      double temp = generateTemperature(tempPrecision);
-      _temperature = generateTemperature(tempPrecision);
-      _humidity = generateTemperature(humidityPrecision);;
-      print("Generated Temperature: $temperature°C");
-      await sendDataToServer();
-      //   await ServerCommunication.sendDataToServer(
-      //     sensor,
-      //     _temperature,
-      //     _humidity,
-      //   );
-      refresh();
-    });
-  }
-
-  /// Met à jour la température avec une valeur falsifiable
-  /// Arrondi à la précision de 0.1°C
+  /// Sets temperature with 0.1°C precision
+  /// [value] - New temperature value to set
   void setTemperature(double value) {
-    _temperature = value; // Arrondi à 0.1°C
+    _temperature = (value * 10).round() / 10;
+    _isManualDataPending = true;
   }
 
-  /// Met à jour l'humidité avec une valeur falsifiable
-  /// Arrondi à la précision de 1%
+  /// Sets humidity with 1% precision
+  /// [value] - New humidity value to set
   void setHumidity(double value) {
-    _humidity = value.roundToDouble(); // Arrondi à 1%
+    _humidity = value.roundToDouble();
+    _isManualDataPending = true;
   }
 
-  /// Démarre l'envoi des données de température
-  /// Cette méthode envoie la température toutes les 10s (mode actif)
-  /// ou toutes les 20s (mode veille).
-  Future<void> sendDataToServer() async {
-    // stopTemperatureTransmission(); // Annule l'ancien timer si existant
-    await ServerCommunication.sendDataToServer(sensor, _temperature, _humidity);
+  /// Starts data transmission with specified update callback
+  /// [onUpdate] - Callback function to trigger UI updates
+  void start({required Function onUpdate}) {
+    _startTimers(onUpdate);
   }
 
-  /// Arrête l'envoi des données de température
-  /// Cette méthode annule le timer d'envoi de température
-  void stopTemperatureTransmission() {
-    // _temperatureTimer?.cancel();
-    timer?.cancel();
-  }
-
-  /// Arrête l'envoi des données d'humidité
-  /// Cette méthode annule le timer d'envoi d'humidité
-  void stopHumidityTransmission() {
+  /// Stops all active timers and cleans up resources
+  void stop() {
+    _tempTimer?.cancel();
     _humidityTimer?.cancel();
   }
 
-  /// Change le mode entre actif et veille
-  /// Cette méthode alterne entre le mode actif et veille,
-  /// puis redémarre les envois de température et d'humidité.
-  void toggleMode() {
-    isActive = !isActive; // Change le mode entre actif et veille
-    print("Mode changé: ${isActive ? 'Actif' : 'Veille'}");
+  /// Initializes timers based on current active/sleep mode
+  /// [onUpdate] - Callback for UI refresh
+  void _startTimers(Function onUpdate) {
+    stop(); // Cancel any existing timers
 
-    // Redémarre l'envoi des données en fonction du mode
-    sendDataToServer();
+    // Set up temperature timer with appropriate interval
+    _tempTimer = Timer.periodic(
+      Duration(seconds: isActive ? 10 : 20), 
+      (_) => _updateData(onUpdate, isTemperature: true),
+    );
+
+    // Set up humidity timer with appropriate interval
+    _humidityTimer = Timer.periodic(
+      Duration(seconds: isActive ? 20 : 50),
+      (_) => _updateData(onUpdate, isTemperature: false),
+    );
+  }
+
+  /// Handles data updates and server communication
+  /// [onUpdate] - UI refresh callback
+  /// [isTemperature] - Flag indicating if updating temperature or humidity
+  Future<void> _updateData(Function onUpdate, {required bool isTemperature}) async {
+    if (isAutoMode) {
+      // Auto-generate new values
+      if (isTemperature) {
+        _temperature = generateTemperature(1);
+      } else {
+        _humidity = generateTemperature(1);
+      }
+      await _sendToServer();
+    } else if (_isManualDataPending) {
+      // Send manual updates
+      await _sendToServer();
+      _isManualDataPending = false;
+    }
+    onUpdate(); // Trigger UI refresh
+  }
+
+  /// Sends current data to server with error handling
+  Future<void> _sendToServer() async {
+    try {
+      await ServerCommunication.sendDataToServer(
+        sensor,
+        _temperature,
+        _humidity,
+      );
+    } catch (e) {
+      print("Server communication error: $e");
+    }
+  }
+
+  /// Toggles between active and sleep modes
+  void toggleActiveMode() {
+    isActive = !isActive;
+    _startTimers(() {});
+  }
+
+  /// Toggles between auto and manual modes
+  void toggleAutoMode() {
+    isAutoMode = !isAutoMode;
+    if (isAutoMode) {
+      // Generate new values immediately for UI
+      _temperature = generateTemperature(1);
+      _humidity = generateTemperature(1);
+      // Server updates will follow normal intervals
+    }
   }
 }

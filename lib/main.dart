@@ -1,175 +1,211 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:temperature/managers/sensor_manager.dart';
-//import 'package:temperature/models/temperature_sensor.dart';
-import 'package:temperature/utils/constants.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-/// Classe principale de l'application
+/// Main application widget
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Capteur Température',
+      title: 'Temperature Sensor',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Capteur Température et Humidité'),
+      home: const MyHomePage(title: 'Temperature & Humidity Sensor'),
     );
   }
 }
 
-/// Écran principal de l'application
+/// Home page widget
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
   final String title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+/// State class for the home page
 class _MyHomePageState extends State<MyHomePage> {
-  final SensorManager sensor = SensorManager(); // Instanciation du capteur
+  final SensorManager manager = SensorManager(); // Sensor manager instance
+  final TextEditingController tempController = TextEditingController(); // Temperature input
+  final TextEditingController humidityController = TextEditingController(); // Humidity input
 
   @override
   void initState() {
     super.initState();
-
-    sensor.launch(() => {setState(() {})});
+    // Initialize sensor with UI update callback
+    manager.start(onUpdate: () => setState(() {}));
   }
 
-  /// Met à jour la température avec une nouvelle valeur saisie par l'utilisateur
-  void updateTemperature(double value) {
-    setState(() {
-      sensor.setTemperature(value);
-    });
+  @override
+  void dispose() {
+    // Clean up resources
+    manager.stop();
+    tempController.dispose();
+    humidityController.dispose();
+    super.dispose();
   }
 
-  /// Met à jour l'humidité avec une nouvelle valeur saisie par l'utilisateur
-  void updateHumidity(double value) {
-    setState(() {
-      sensor.setHumidity(value);
-    });
+  /// Updates temperature with manual input
+  void _updateTemperature() {
+    final value = double.tryParse(tempController.text);
+    if (value != null) {
+      setState(() {
+        manager.setTemperature(value);
+        tempController.clear();
+      });
+    }
   }
 
-  void sendDataToServer(double temperature, double humidity) async {
-	print("send data to the server");
-    // Crée une map avec les données
-    Map<String, dynamic> data = {
-      'temperature': temperature,
-      'humidity': humidity,
-      'timestamp':
-          DateTime.now()
-              .toIso8601String(), // Ajoute l'heure d'envoi pour le test
-    };
-
-    try {
-      // Envoie les données via une requête POST
-      final response = await http.post(
-        Uri.parse(THING_API_URL + "receivedata"),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(data),
-      );
-
-      if (response.statusCode == 200) {
-        // Si la requête est réussie, affiche la réponse
-        print('Données envoyées avec succès : ${response.body}');
-      } else {
-        // Si la requête échoue, affiche l'erreur
-        print('Erreur lors de l\'envoi des données : ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Erreur : $e');
+  /// Updates humidity with manual input
+  void _updateHumidity() {
+    final value = double.tryParse(humidityController.text);
+    if (value != null) {
+      setState(() {
+        manager.setHumidity(value);
+        humidityController.clear();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    TextEditingController tempController = TextEditingController();
-    TextEditingController humidityController = TextEditingController();
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'Température: ${sensor.temperature}°C',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            Text(
-              'Humidité: ${sensor.humidity}%',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 20),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Data display section
+              _buildDataDisplay(context),
+              const SizedBox(height: 30),
+              
+              // Manual controls section
+              _buildManualControls(),
+              const SizedBox(height: 20),
+              
+              // Mode control buttons
+              _buildModeButtons(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            /*// Champ pour entrer une nouvelle température
+  /// Builds the data display widgets
+  Widget _buildDataDisplay(BuildContext context) {
+    return Column(
+      children: [
+        // Temperature display
+        Text(
+          '${manager.temperature.toStringAsFixed(1)}°C',
+          style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                color: Colors.blue,
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        // Humidity display
+        Text(
+          '${manager.humidity.toStringAsFixed(0)}% RH',
+          style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        // Mode indicators
+        Text(
+          manager.isActive ? 'Active Mode' : 'Sleep Mode',
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+        Text(
+          manager.isAutoMode ? 'Auto Mode' : 'Manual Mode',
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  /// Builds manual input controls
+  Widget _buildManualControls() {
+    return AbsorbPointer(
+      // Disable controls in auto mode
+      absorbing: manager.isAutoMode,
+      child: Opacity(
+        // Visual indication of disabled state
+        opacity: manager.isAutoMode ? 0.6 : 1.0,
+        child: Column(
+          children: [
+            // Temperature input
             TextField(
               controller: tempController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: "Nouvelle température (°C)",
+                labelText: "Temperature (°C)",
+                border: OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 10),
             ElevatedButton(
-              onPressed: () {
-                double? newTemp = double.tryParse(tempController.text);
-                if (newTemp != null) {
-                  updateTemperature(newTemp);
-                }
-              },
-              child: const Text("Modifier Température"),
-            ),*/
-
-            // Champ pour entrer une nouvelle humidité
-            /*TextField(
+              onPressed: _updateTemperature,
+              child: const Text("Update"),
+            ),
+            const SizedBox(height: 20),
+            // Humidity input
+            TextField(
               controller: humidityController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: "Nouvelle humidité (%)",
+                labelText: "Humidity (%)",
+                border: OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 10),
             ElevatedButton(
-              onPressed: () {
-                double? newHumidity = double.tryParse(humidityController.text);
-                if (newHumidity != null) {
-                  updateHumidity(newHumidity);
-                }
-              },
-              child: const Text("Modifier Humidité"),
-            ),
-            */
-
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  sensor.toggleMode(); // Change le mode actif/veille
-                });
-              },
-              child: Text(sensor.isActive ? 'Passer en veille' : 'Activer'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                sendDataToServer(10, 10);
-              },
-              child: Text("test server"),
+              onPressed: _updateHumidity,
+              child: const Text("Update"),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Builds mode toggle buttons
+  Widget _buildModeButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Active/Sleep mode toggle
+        ElevatedButton(
+          onPressed: () => setState(() => manager.toggleActiveMode()),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: manager.isActive ? Colors.orange : Colors.grey,
+          ),
+          child: Text(manager.isActive ? 'Switch to Sleep' : 'Switch to Active'),
+        ),
+        const SizedBox(width: 20),
+        // Auto/Manual mode toggle
+        ElevatedButton(
+          onPressed: () => setState(() => manager.toggleAutoMode()),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: manager.isAutoMode ? Colors.blue : Colors.purple,
+          ),
+          child: Text(manager.isAutoMode ? 'Switch to Manual' : 'Switch to Auto'),
+        ),
+      ],
     );
   }
 }
