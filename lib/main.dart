@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:temperature/managers/sensor_manager.dart';
 import 'package:temperature/models/temperature_sensor.dart';
+import 'package:temperature/utils/constants.dart';
 
 void main() {
   runApp(const MyApp());
@@ -32,22 +37,13 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final TemperatureSensor sensor = TemperatureSensor(); // Instanciation du capteur
+  final SensorManager sensor = SensorManager(); // Instanciation du capteur
 
   @override
   void initState() {
     super.initState();
 
-    // Démarrer la transmission des données dès l'initialisation, avec le mode par défaut (actif ou veille)
-    sensor.toggleMode(); // Passer au mode actif ou veille, selon l'état initial du capteur
-
-    sensor.startTemperatureTransmission((temp) {
-      setState(() {}); // Met à jour l'UI pour la température
-    });
-
-    sensor.startHumidityTransmission((hum) {
-      setState(() {}); // Met à jour l'UI pour l'humidité
-    });
+    sensor.launch(() => {setState(() {})});
   }
 
   /// Met à jour la température avec une nouvelle valeur saisie par l'utilisateur
@@ -62,6 +58,37 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       sensor.setHumidity(value);
     });
+  }
+
+  void sendDataToServer(double temperature, double humidity) async {
+	print("send data to the server");
+    // Crée une map avec les données
+    Map<String, dynamic> data = {
+      'temperature': temperature,
+      'humidity': humidity,
+      'timestamp':
+          DateTime.now()
+              .toIso8601String(), // Ajoute l'heure d'envoi pour le test
+    };
+
+    try {
+      // Envoie les données via une requête POST
+      final response = await http.post(
+        Uri.parse(THING_API_URL + "receivedata"),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+
+      if (response.statusCode == 200) {
+        // Si la requête est réussie, affiche la réponse
+        print('Données envoyées avec succès : ${response.body}');
+      } else {
+        // Si la requête échoue, affiche l'erreur
+        print('Erreur lors de l\'envoi des données : ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Erreur : $e');
+    }
   }
 
   @override
@@ -92,7 +119,9 @@ class _MyHomePageState extends State<MyHomePage> {
             TextField(
               controller: tempController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Nouvelle température (°C)"),
+              decoration: const InputDecoration(
+                labelText: "Nouvelle température (°C)",
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -108,7 +137,9 @@ class _MyHomePageState extends State<MyHomePage> {
             TextField(
               controller: humidityController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Nouvelle humidité (%)"),
+              decoration: const InputDecoration(
+                labelText: "Nouvelle humidité (%)",
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -128,6 +159,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 });
               },
               child: Text(sensor.isActive ? 'Passer en veille' : 'Activer'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                sendDataToServer(10, 10);
+              },
+              child: Text("test server"),
             ),
           ],
         ),
