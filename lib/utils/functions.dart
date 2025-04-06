@@ -8,6 +8,13 @@ double generateTemperature(int precision) {
   return double.parse(temperature.toStringAsFixed(precision));
 }
 
+double generateHumidity(int precision) {
+  double temperature =
+      Random().nextDouble() *
+      100; // Generates a random Humidity value between 0% and 10%
+  return double.parse(temperature.toStringAsFixed(precision));
+}
+
 /// function to generate random string
 String generateRandomString(int length) {
   /// list of characters allowed

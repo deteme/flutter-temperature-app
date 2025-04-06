@@ -10,8 +10,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context) => MaterialApp(
       title: 'Temperature Sensor',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -19,7 +18,6 @@ class MyApp extends StatelessWidget {
       ),
       home: const MyHomePage(title: 'Temperature & Humidity Sensor'),
     );
-  }
 }
 
 /// Home page widget
@@ -76,15 +74,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -103,11 +100,9 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
     );
-  }
 
   /// Builds the data display widgets
-  Widget _buildDataDisplay(BuildContext context) {
-    return Column(
+  Widget _buildDataDisplay(BuildContext context) => Column(
       children: [
         // Temperature display
         Text(
@@ -136,11 +131,9 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ],
     );
-  }
 
   /// Builds manual input controls
-  Widget _buildManualControls() {
-    return AbsorbPointer(
+  Widget _buildManualControls() => AbsorbPointer(
       // Disable controls in auto mode
       absorbing: manager.isAutoMode,
       child: Opacity(
@@ -181,16 +174,14 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
     );
-  }
 
   /// Builds mode toggle buttons
-  Widget _buildModeButtons() {
-    return Row(
+  Widget _buildModeButtons() => Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Active/Sleep mode toggle
         ElevatedButton(
-          onPressed: () => setState(() => manager.toggleActiveMode()),
+          onPressed: () => setState(manager.toggleActiveMode),
           style: ElevatedButton.styleFrom(
             backgroundColor: manager.isActive ? Colors.orange : Colors.grey,
           ),
@@ -199,7 +190,7 @@ class _MyHomePageState extends State<MyHomePage> {
         const SizedBox(width: 20),
         // Auto/Manual mode toggle
         ElevatedButton(
-          onPressed: () => setState(() => manager.toggleAutoMode()),
+          onPressed: () => setState(manager.toggleAutoMode),
           style: ElevatedButton.styleFrom(
             backgroundColor: manager.isAutoMode ? Colors.blue : Colors.purple,
           ),
@@ -207,5 +198,4 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ],
     );
-  }
 }

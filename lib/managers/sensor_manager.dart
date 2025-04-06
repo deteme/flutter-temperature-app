@@ -34,19 +34,23 @@ class SensorManager {
   double get temperature => _temperature; // Returns current temperature
   double get humidity => _humidity;      // Returns current humidity
 
-  /// Sets temperature with 0.1°C precision
-  /// [value] - New temperature value to set
-  void setTemperature(double value) {
-    _temperature = (value * 10).round() / 10;
-    _isManualDataPending = true;
+/// Sets temperature with validation (0-50°C)
+void setTemperature(double value) {
+  if (value < 0 || value > 50) {
+    throw ArgumentError('Temperature must be between 0-50°C');
   }
+  _temperature = (value * 10).round() / 10; // Maintains 0.1°C precision
+  _isManualDataPending = true;
+}
 
-  /// Sets humidity with 1% precision
-  /// [value] - New humidity value to set
-  void setHumidity(double value) {
-    _humidity = value.roundToDouble();
-    _isManualDataPending = true;
+/// Sets humidity with validation (0-100%)
+void setHumidity(double value) {
+  if (value < 0 || value > 100) {
+    throw ArgumentError('Humidity must be between 0-100%');
   }
+  _humidity = value.roundToDouble(); // Maintains 1% precision
+  _isManualDataPending = true;
+}
 
   /// Starts data transmission with specified update callback
   /// [onUpdate] - Callback function to trigger UI updates
@@ -87,7 +91,7 @@ class SensorManager {
       if (isTemperature) {
         _temperature = generateTemperature(1);
       } else {
-        _humidity = generateTemperature(1);
+        _humidity = generateHumidity(1);
       }
       await _sendToServer();
     } else if (_isManualDataPending) {

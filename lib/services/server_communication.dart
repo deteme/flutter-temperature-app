@@ -3,36 +3,40 @@ import 'package:http/http.dart' as http;
 import 'package:temperature/models/sensor.dart';
 import 'package:temperature/utils/constants.dart';
 
-/// Classe responsable de la communication avec le serveur
+/// Handles all HTTP communication with the backend server
 class ServerCommunication {
 
-  /// Envoie des données au serveur
+  /// Sends sensor telemetry data to the server
+  /// [sensor] : Sensor device information
+  /// [temperature] : Current temperature reading
+  /// [humidity] : Current humidity reading
+  /// Throws: Network or server errors
   static Future<void> sendDataToServer(Sensor sensor, double temperature, double humidity) async {
-    // Crée une map avec les données
+    // Prepare payload with sensor data and timestamp
     Map<String, dynamic> data = {
-		'sensor': sensor.toJson(),
+      'sensor': sensor.toJson(),  // Convert sensor object to JSON
       'temperature': temperature,
       'humidity': humidity,
-      'timestamp': DateTime.now().toIso8601String(), // Ajoute l'heure d'envoi pour le test
+      'timestamp': DateTime.now().toIso8601String(),  // ISO 8601 formatted timestamp
     };
 
     try {
-      // Envoie les données via une requête POST
+      // Execute POST request to server endpoint
       final response = await http.post(
-        Uri.parse(THING_API_URL+"receivedata"),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(data),
+        Uri.parse(THING_API_URL + "receivedata"),  // Full endpoint URL
+        headers: {'Content-Type': 'application/json'},  // JSON content type
+        body: json.encode(data),  // Convert payload to JSON string
       );
 
+      // Check response status code
       if (response.statusCode == 200) {
-        // Si la requête est réussie, affiche la réponse
-        print('Données envoyées avec succès : ${response.body}');
+        print('Data successfully sent: ${response.body}');  // Log success
       } else {
-        // Si la requête échoue, affiche l'erreur
-        print('Erreur lors de l\'envoi des données : ${response.statusCode}');
+        print('Failed to send data. Status code: ${response.statusCode}');  // Log HTTP error
       }
     } catch (e) {
-      print('Erreur : $e');
+      print('Communication error: $e');  // Log network/parsing errors
+      rethrow;  // Preserve stack trace
     }
   }
 }
